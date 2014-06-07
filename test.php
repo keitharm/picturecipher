@@ -1,9 +1,9 @@
 <?php
-require_once("Picture.class.php");
-$enc = Picture::encrypt($argv[1], $argv[2]);
+require_once("Text.class.php");
+$enc = Text::encrypt($argv[1], $argv[2]);
 echo $enc->getResult() . "\n";
 
-$dec = Picture::decrypt($enc->getResult(), $argv[2]);
+$dec = Text::decrypt($enc->getResult(), $argv[2]);
 echo $dec->getResult();
 
 echo "\n";

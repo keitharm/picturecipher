@@ -1,10 +1,17 @@
 <?php
-class Picture
+class Text
 {
-	private $input;
-	private $image;
+	// Base 64 characters
+	const ORIGINAL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	public static function encrypt($input) {
+	private $input;
+	private $base64;
+	private $password;
+	private $cipher;
+	private $input_len;
+	private $result;
+
+	public static function encrypt($input, $password = null) {
 		$instance = new self();
 
 		$instance->initInput($input);
@@ -16,7 +23,7 @@ class Picture
 		return $instance;
 	}
 
-	public static function decrypt($input) {
+	public static function decrypt($input, $password = null) {
 		$instance = new self();
 
 		$instance->initInput($input);
