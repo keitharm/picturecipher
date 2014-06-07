@@ -1,84 +1,89 @@
 <?php
+require_once("Text.class.php");
+
 class Picture
 {
 	private $input;
+	private $password;
+	private $text;
 	private $image;
+	private $bin;
 
-	public static function encrypt($input) {
+	public static function encrypt($input, $password = null) {
 		$instance = new self();
 
-		$instance->initInput($input);
-		$instance->setPassword($password);
-		$instance->scramble();
-		$instance->setBase64($instance->encode());
-		$instance->setResult($instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher()));
+		$instance->input     = $input;
+		$instance->password  = $password;
+		$instance->text = Text::encrypt($input, $instance->getPassword())->getResult();
+		$instance->toBin();
 
 		return $instance;
 	}
 
-	public static function decrypt($input) {
+	public static function decrypt($image, $password = null) {
 		$instance = new self();
-
-		$instance->initInput($input);
-		$instance->setPassword($password);
-		$instance->scramble();
-		$instance->setBase64($instance->getInput());
-		$instance->setBase64($instance->swap($instance->getBase64(), $instance->getCipher(), $instance->getOriginal()));
-		$instance->setResult($instance->decode());
 
 		return $instance;
 	}
 
-	private function initInput($input) {
-		$this->setInput($input);
+	private function charToInt($char) {
+		$chars = array(
+			'A', 'B', 'C', 'D', 'E',
+			'F', 'G', 'H', 'I', 'J',
+			'K', 'L', 'M', 'N', 'O',
+			'P', 'Q', 'R', 'S', 'T',
+			'U', 'V', 'W', 'X', 'Y',
+			'Z', 'a', 'b', 'c', 'd',
+			'e', 'f', 'g', 'h', 'i',
+			'j', 'k', 'l', 'm', 'n',
+			'o', 'p', 'q', 'r', 's',
+			't', 'u', 'v', 'w', 'x',
+			'y', 'z', '0', '1', '2',
+			'3', '4', '5', '6', '7',
+			'8', '9', '+', '/'
+		);
+		return array_search($char, $chars);
 	}
 
-	private function scramble() {
-		// Seed random number generator
-		srand(hexdec(substr(md5($this->password), 0, 10)));
+	private function toBin() {
+		// Split encrypted text into array;
+		$split = str_split($this->getText());
 
-		// Shuffle ORIGINAL string
-    	$this->setCipher(str_shuffle($this->getOriginal()));
-	}
+		// First 3 characters of string are offset.
+		// 000 in beginning until we calculate the
+		// offset. Then it is updated.
+		$str = "000";
 
-	private function encode() {
-		return base64_encode($this->getInput());
-	}
+		// Convert ascii characters into binary using charToInt mapping
+		foreach ($split as $val) {
+			$str .= sprintf("%06d", decbin($this->charToInt($val)));
+		}
 
-	private function decode() {
-		return base64_decode($this->getBase64());
-	}
+		// Calculate offset for padding in order to make last byte an octet
+		$offset = sprintf("%03d", decbin(8 - (strlen($str) % 8)));
 
-	private function swap($text, $original, $new) {
-		// Replace base64 string with chars from scrambled original
-		$len = strlen($text);
+		// Replace 1st 3 characters with offset
+		$str = substr_replace($str, $offset, 0, 3);
 
-	    for ($a = 0; $a < $len; $a++) {
-	        for ($b = 0; $b < 65; $b++) {
-	            if ($original[$b] == $text[$a]) {
-	                $result .= $new[$b];
-	            }
-	        }
-	    }
+		// Fill rest of last chunk with zeros as padding
+		$str .= str_repeat("0", 8 - (strlen($str) % 8));
 
-	    // Return result
-	    return $result;
+		// Save binary string
+		$this->setBin($str);
 	}
 
 	// Getters
-	public function getOriginal() { return Text::ORIGINAL; }
-
 	public function getInput() { return $this->input; }
-	public function getBase64() { return $this->base64; }
 	public function getPassword() { return $this->password; }
-	public function getCipher() { return $this->cipher; }
-	public function getResult() { return $this->result; }
+	public function getText() { return $this->text; }
+	public function getImage() { return $this->image; }
+	public function getBin() { return $this->bin; }
 
 	// Setters
 	private function setInput($val) { $this->input = $val; }
-	private function setBase64($val) { $this->base64 = $val; }
 	private function setPassword($val) { $this->password = $val; }
-	private function setCipher($val) { $this->cipher = $val; }
-	private function setResult($val) { $this->result = $val; }
+	private function setText($val) { $this->text = $val; }
+	private function setImage($val) { $this->image = $val; }
+	private function setBin($val) { $this->bin = $val; }
 }
 ?>
