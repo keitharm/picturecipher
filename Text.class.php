@@ -17,7 +17,7 @@ class Text
 		$instance->initInput($input);
 		$instance->setPassword($password);
 		$instance->scramble();
-		$instance->setBase64($instance->encode());
+		$instance->setBase64($instance->encode($instance->getInput()));
 		$instance->setResult($instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher()));
 
 		return $instance;
@@ -29,9 +29,8 @@ class Text
 		$instance->initInput($input);
 		$instance->setPassword($password);
 		$instance->scramble();
-		$instance->setBase64($instance->getInput());
-		$instance->setBase64($instance->swap($instance->getBase64(), $instance->getCipher(), $instance->getOriginal()));
-		$instance->setResult($instance->decode());
+		$instance->setBase64($instance->swap($instance->getInput(), $instance->getCipher(), $instance->getOriginal()));
+		$instance->setResult($instance->decode($instance->getBase64()));
 
 		return $instance;
 	}
@@ -48,12 +47,12 @@ class Text
     	$this->setCipher(str_shuffle($this->getOriginal()));
 	}
 
-	private function encode() {
-		return base64_encode($this->getInput());
+	private function encode($content) {
+		return base64_encode($content);
 	}
 
-	private function decode() {
-		return base64_decode($this->getBase64());
+	private function decode($content) {
+		return base64_decode($content);
 	}
 
 	private function swap($text, $original, $new) {
