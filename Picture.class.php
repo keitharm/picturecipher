@@ -30,11 +30,11 @@ class Picture
 		return $instance;
 	}
 
-	private function charToInt($char) {
+	public function charToInt($char) {
 		return array_search($char, $this->chars());
 	}
 
-	private function intToChar($int) {
+	public function intToChar($int) {
 		return $this->chars()[$int];
 	}
 
@@ -107,6 +107,21 @@ class Picture
 			'8', '9', '+', '/'
 		);
 		return $chars;
+	}
+
+	public function getChars() {
+		$split = str_split($this->getMedium());
+		return $split;
+	}
+
+	public function getChunks() {
+		// Split binary string into byte chunks
+		$chunks = explode(" ", chunk_split($this->getOutput(), 8, " "));
+
+		// Unset null byte
+		unset($chunks[count($chunks)-1]);
+
+		return $chunks;
 	}
 
 	// Getters
