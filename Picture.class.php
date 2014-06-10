@@ -49,7 +49,7 @@ class Picture
 
         // Add extra chunks to make total chuncks divisible by 3 for complete RGB pixels
         while (count($chunks) % 3 != 0) {
-            $chunks[] = "00000000";
+            $chunks[] = "11111111";
         }
 
         // Calculate dimensions of image
@@ -84,6 +84,10 @@ class Picture
         // Width in pixels
         $width = $imageinfo[0];
 
+        // initialize result and prev
+        $result = null;
+        $prev = null;
+
         // Create image
         $im = @imagecreatefrompng($this->getInput());
 
@@ -102,7 +106,13 @@ class Picture
             $values[] = $chars[$a]["blue"];
         }
 
-        while ($values[count($values)-1] == "00000000") {
+        // Hack that currently works. Needs to be replaced with something more reliable for detecting where the data ends.
+        // Possibly add position data ends at at the EOF.
+        while ($values[count($values)-1] == 255 || $values[count($values)-1] == 0) {
+            if ($prev == 255 && $values[count($values)-1] == 0) {
+                break;
+            }
+            $prev = $values[count($values)-1];
             unset($values[count($values)-1]);
         }
 
@@ -149,10 +159,12 @@ class Picture
     }
 
     private function fromBin($content) {
+        // Initialize str
+        $str = null;
+
         $offset = substr($content, 0, 3);
         $remove = bindec($offset);
         // Remove the zero padding (if it exists)
-        #echo $content . "\n";
         if ($remove == 0) {
             $new = substr($content, 3);
         } else {
