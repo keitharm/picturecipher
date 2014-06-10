@@ -14,7 +14,7 @@ class Text
 	public static function encrypt($input, $password = null) {
 		$instance = new self();
 
-		$instance->initInput($input);
+		$instance->setInput($input);
 		$instance->setPassword($password);
 		$instance->scramble();
 		$instance->setBase64($instance->encode($instance->getInput()));
@@ -26,17 +26,13 @@ class Text
 	public static function decrypt($input, $password = null) {
 		$instance = new self();
 
-		$instance->initInput($input);
+		$instance->setInput($input);
 		$instance->setPassword($password);
 		$instance->scramble();
 		$instance->setBase64($instance->swap($instance->getInput(), $instance->getCipher(), $instance->getOriginal()));
 		$instance->setResult($instance->decode($instance->getBase64()));
 
 		return $instance;
-	}
-
-	private function initInput($input) {
-		$this->setInput($input);
 	}
 
 	private function scramble() {
