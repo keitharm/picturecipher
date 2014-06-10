@@ -1,24 +1,23 @@
 <?php
 class Text
 {
-	// Base 64 characters
+	// Characters used in Base 64
 	const ORIGINAL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	private $input;
-	private $base64;
 	private $password;
 	private $cipher;
-	private $input_len;
-	private $result;
+	private $base64;
+	private $output;
 
 	public static function encrypt($input, $password = null) {
 		$instance = new self();
 
-		$instance->setInput($input);
-		$instance->setPassword($password);
+		$instance->input    = $input;
+		$instance->password = $password;
 		$instance->scramble();
 		$instance->setBase64($instance->encode($instance->getInput()));
-		$instance->setResult($instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher()));
+		$instance->setOutput($instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher()));
 
 		return $instance;
 	}
@@ -26,11 +25,11 @@ class Text
 	public static function decrypt($input, $password = null) {
 		$instance = new self();
 
-		$instance->setInput($input);
-		$instance->setPassword($password);
+		$instance->input    = $input;
+		$instance->password = $password;
 		$instance->scramble();
 		$instance->setBase64($instance->swap($instance->getInput(), $instance->getCipher(), $instance->getOriginal()));
-		$instance->setResult($instance->decode($instance->getBase64()));
+		$instance->setOutput($instance->decode($instance->getBase64()));
 
 		return $instance;
 	}
@@ -39,7 +38,7 @@ class Text
 		// Seed random number generator
 		srand(hexdec(substr(md5($this->password), 0, 10)));
 
-		// Shuffle ORIGINAL string
+		// Shuffle base 64 character string
     	$this->setCipher(str_shuffle($this->getOriginal()));
 	}
 
@@ -67,20 +66,20 @@ class Text
 	    return $result;
 	}
 
-	// Getters
 	public function getOriginal() { return Text::ORIGINAL; }
 
+	// Getters
 	public function getInput() { return $this->input; }
-	public function getBase64() { return $this->base64; }
 	public function getPassword() { return $this->password; }
 	public function getCipher() { return $this->cipher; }
-	public function getResult() { return $this->result; }
+	public function getBase64() { return $this->base64; }
+	public function getOutput() { return $this->output; }
 
 	// Setters
 	private function setInput($val) { $this->input = $val; }
-	private function setBase64($val) { $this->base64 = $val; }
 	private function setPassword($val) { $this->password = $val; }
 	private function setCipher($val) { $this->cipher = $val; }
-	private function setResult($val) { $this->result = $val; }
+	private function setBase64($val) { $this->base64 = $val; }
+	private function setOutput($val) { $this->output = $val; }
 }
 ?>
