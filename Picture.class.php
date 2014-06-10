@@ -97,13 +97,13 @@ class Picture
 
         // Push RGB pixel colors into values array
         for ($a = 0; $a < count($chars); $a++) {
-            if ($chars[$a]["red"] == 0 && $chars[$a]["green"] == 0 && $chars[$a]["blue"] == 0) {
-                continue;
-            } else {
-                $values[] = $chars[$a]["red"];
-                $values[] = $chars[$a]["green"];
-                $values[] = $chars[$a]["blue"];
-            }
+            $values[] = $chars[$a]["red"];
+            $values[] = $chars[$a]["green"];
+            $values[] = $chars[$a]["blue"];
+        }
+
+        while ($values[count($values)-1] == "00000000") {
+            unset($values[count($values)-1]);
         }
 
         // Convert each pixel color from decimal to it's binary value
