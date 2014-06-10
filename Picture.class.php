@@ -30,6 +30,24 @@ class Picture
 		return $instance;
 	}
 
+	public function outputImage() {
+		$chunks = $this->getChunks();
+		$dim = ceil(sqrt(count($chunks) / 3));
+		$img = imagecreatetruecolor($dim, ceil(count($chunks) / $dim / 3));
+		$colors = array();
+
+		for ($a = 0; $a < count($chunks); $a += 3) {
+		    array_push($colors, imagecolorallocate($img, bindec($chunks[$a]), bindec($chunks[$a+1]), bindec($chunks[$a+2])));
+		}
+		 for ($j = 0; $j < $dim; $j++) {
+		        for ($i = 0; $i < $dim; $i++) {
+		            imagesetpixel($img, $i, $j, $colors[($j*$dim)+$i]);
+		        }
+		    }
+		imagepng($img);
+		imagedestroy($img);
+	}
+
 	public function charToInt($char) {
 		return array_search($char, $this->chars());
 	}
