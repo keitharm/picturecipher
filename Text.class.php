@@ -16,8 +16,8 @@ class Text
 		$instance->input    = $input;
 		$instance->password = $password;
 		$instance->scramble();
-		$instance->setBase64($instance->encode($instance->getInput()));
-		$instance->setOutput($instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher()));
+		$instance->base64   = $instance->encode($instance->getInput());
+		$instance->output   = $instance->swap($instance->getBase64(), $instance->getOriginal(), $instance->getCipher());
 
 		return $instance;
 	}
@@ -28,8 +28,8 @@ class Text
 		$instance->input    = $input;
 		$instance->password = $password;
 		$instance->scramble();
-		$instance->setBase64($instance->swap($instance->getInput(), $instance->getCipher(), $instance->getOriginal()));
-		$instance->setOutput($instance->decode($instance->getBase64()));
+		$instance->base64   = $instance->swap($instance->getInput(), $instance->getCipher(), $instance->getOriginal());
+		$instance->output   = $instance->decode($instance->getBase64());
 
 		return $instance;
 	}

@@ -5,47 +5,112 @@ class Picture
 {
 	private $input;
 	private $password;
-	private $medium;
-	private $image;
+	private $text;
+	private $binary;
 	private $output;
 
 	public static function encrypt($input, $password = null) {
 		$instance = new self();
 
+		// Set input and password
 		$instance->input     = $input;
 		$instance->password  = $password;
-		$instance->medium    = Text::encrypt($instance->getInput(), $instance->getPassword())->getResult();
-		$instance->output    = $instance->toBin($instance->getMedium());
+
+		// Create Text object using input and password
+		$instance->text      = Text::encrypt($instance->getInput(), $instance->getPassword());
+
+		// Convert Text object output into binary
+		$instance->binary    = $instance->toBin($instance->getText()->getOutput());
 
 		return $instance;
 	}
 
-	public static function decrypt($image, $password = null) {
+	public static function decrypt($input, $password = null) {
 		$instance = new self();
-		$instance->input    = $image;
+
+		// Set input and password
+		$instance->input    = $input;
 		$instance->password = $password;
-		$instance->medium   = $instance->fromBin($instance->getInput());
-		$instance->output   = Text::decrypt($instance->getMedium(), $instance->getPassword())->getResult();
+
+		// Convert image into binary
+		$instance->binary   = $instance->decodeImage();
+
+		// Convert binary to Text object
+		$instance->text     = Text::decrypt($instance->fromBin($instance->getBinary()), $instance->getPassword());
+
+		// Decrypt text object to original input
+		$instance->output   = $instance->getText()->getOutput();
 
 		return $instance;
 	}
 
 	public function outputImage() {
 		$chunks = $this->getChunks();
+
+		// Add extra chunks to make total chuncks divisible by 3 for complete RGB pixels
+		while (count($chunks) % 3 != 0) {
+			$chunks[] = "00000000";
+		}
+
+		// Calculate dimensions of image
 		$dim = ceil(sqrt(count($chunks) / 3));
 		$img = imagecreatetruecolor($dim, ceil(count($chunks) / $dim / 3));
 		$colors = array();
 
+		// Convert groups of 3 chunks into pixels
 		for ($a = 0; $a < count($chunks); $a += 3) {
 		    array_push($colors, imagecolorallocate($img, bindec($chunks[$a]), bindec($chunks[$a+1]), bindec($chunks[$a+2])));
 		}
-		 for ($j = 0; $j < $dim; $j++) {
-		        for ($i = 0; $i < $dim; $i++) {
-		            imagesetpixel($img, $i, $j, $colors[($j*$dim)+$i]);
-		        }
-		    }
+
+		// Set color for each pixel
+		for ($j = 0; $j < $dim; $j++) {
+	        for ($i = 0; $i < $dim; $i++) {
+	            imagesetpixel($img, $i, $j, $colors[($j*$dim)+$i]);
+	        }
+	    }
+
+	    // Output image
 		imagepng($img);
 		imagedestroy($img);
+	}
+
+	public function decodeImage() {
+	    // Array filled with information regarding the image
+	    $imageinfo = getimagesize($this->getInput());
+
+	    // Height in pixels
+	    $height = $imageinfo[1];
+
+	    // Width in pixels
+	    $width = $imageinfo[0];
+
+	    // Create image
+	    $im = @imagecreatefrompng($this->getInput());
+
+	    // Finds the index of the color of each pixel in the image
+		for ($j = 0; $j < $height; $j++) {
+			for ($i = 0; $i < $width; $i++) {
+				// Adds the index of the colors into the $chars array
+				$chars[] = imagecolorsforindex($im, imagecolorat($im, $i, $j));
+	        }
+	    }
+
+	    // Push RGB pixel colors into values array
+	    for ($a = 0; $a < count($chars); $a++) {
+            if ($chars[$a]["red"] == 0 && $chars[$a]["green"] == 0 && $chars[$a]["blue"] == 0) {
+                continue;
+            } else {
+		        $values[] = $chars[$a]["red"];
+		        $values[] = $chars[$a]["green"];
+		        $values[] = $chars[$a]["blue"];
+		    }
+	    }
+
+	    // Convert each pixel color from decimal to it's binary value
+	    for ($a = 0; $a < count($values); $a++) {
+	        $result .= sprintf("%08d", decbin($values[$a]));
+	    }
+	    return $result;
 	}
 
 	public function charToInt($char) {
@@ -127,17 +192,15 @@ class Picture
 		return $chars;
 	}
 
-	public function getChars() {
-		$split = str_split($this->getMedium());
-		return $split;
-	}
-
 	public function getChunks() {
 		// Split binary string into byte chunks
-		$chunks = explode(" ", chunk_split($this->getOutput(), 8, " "));
+		$chunks = explode(" ", chunk_split($this->getBinary(), 8, " "));
 
 		// Unset null byte
 		unset($chunks[count($chunks)-1]);
+
+		// Reindex array
+		$chunks = array_values($chunks);
 
 		return $chunks;
 	}
@@ -145,15 +208,17 @@ class Picture
 	// Getters
 	public function getInput() { return $this->input; }
 	public function getPassword() { return $this->password; }
+	public function getText() { return $this->text; }
+	public function getBinary() { return $this->binary; }
 	public function getMedium() { return $this->medium; }
-	public function getImage() { return $this->image; }
 	public function getOutput() { return $this->output; }
 
 	// Setters
 	private function setInput($val) { $this->input = $val; }
 	private function setPassword($val) { $this->password = $val; }
+	private function setText($val) { $this->text = $val; }
+	private function setBinary($val) { $this->binary = $val; }
 	private function setMedium($val) { $this->medium = $val; }
-	private function setImage($val) { $this->image = $val; }
 	private function setOutput($val) { $this->output = $val; }
 }
 ?>
