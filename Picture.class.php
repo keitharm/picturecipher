@@ -65,7 +65,7 @@ class Picture
         // Set color for each pixel
         for ($j = 0; $j < $dim; $j++) {
             for ($i = 0; $i < $dim; $i++) {
-                imagesetpixel($img, $i, $j, $colors[($j*$dim)+$i]);
+                @imagesetpixel($img, $i, $j, $colors[($j*$dim)+$i]);
             }
         }
 

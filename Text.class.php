@@ -53,9 +53,10 @@ class Text
     private function swap($text, $original, $new) {
         // Replace base64 string with chars from scrambled original
         $len = strlen($text);
+        $result = null;
 
         for ($a = 0; $a < $len; $a++) {
-            for ($b = 0; $b < 65; $b++) {
+            for ($b = 0; $b < 64; $b++) {
                 if ($original[$b] == $text[$a]) {
                     $result .= $new[$b];
                 }
