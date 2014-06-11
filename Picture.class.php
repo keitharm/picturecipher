@@ -49,7 +49,7 @@ class Picture
 
         // Add extra chunks to make total chuncks divisible by 3 for complete RGB pixels
         while (count($chunks) % 3 != 0) {
-            $chunks[] = "11111111";
+            $chunks[] = 0xFF;
         }
 
         // Calculate dimensions of image
@@ -108,8 +108,8 @@ class Picture
 
         // Hack that currently works. Needs to be replaced with something more reliable for detecting where the data ends.
         // Possibly add position data ends at at the EOF.
-        while ($values[count($values)-1] == 255 || $values[count($values)-1] == 0) {
-            if ($prev == 255 && $values[count($values)-1] == 0) {
+        while ($values[count($values)-1] == 0xFF || $values[count($values)-1] == 0x00) {
+            if ($prev == 0xFF && $values[count($values)-1] == 0x00) {
                 break;
             }
             $prev = $values[count($values)-1];
