@@ -74,7 +74,7 @@ class Picture
         imagedestroy($img);
     }
 
-    public function decodeImage() {
+    private function decodeImage() {
         // Array filled with information regarding the image
         $imageinfo = getimagesize($this->getInput());
 
@@ -123,11 +123,11 @@ class Picture
         return $result;
     }
 
-    public function charToInt($char) {
+    private function charToInt($char) {
         return array_search($char, $this->chars());
     }
 
-    public function intToChar($int) {
+    private function intToChar($int) {
         return $this->chars()[$int];
     }
 
@@ -204,7 +204,7 @@ class Picture
         return $chars;
     }
 
-    public function getChunks() {
+    private function getChunks() {
         // Split binary string into byte chunks
         $chunks = explode(" ", chunk_split($this->getBinary(), 8, " "));
 
