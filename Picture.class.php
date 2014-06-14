@@ -93,6 +93,10 @@ class Picture
         // Create image
         $im = @imagecreatefrompng($this->getInput());
 
+        if (!$this->checkValidPassword($im, $height, $width)) {
+            die("Invalid Password\n");
+        }
+
         // Finds the index of the color of each pixel in the image
         for ($j = 0; $j < $height; $j++) {
             for ($i = 0; $i < $width; $i++) {
@@ -188,14 +192,6 @@ class Picture
         // Initialize str
         $str = null;
 
-        // Extract checksum and quick check
-        $this->setChecksum($this->binToText(substr($content, 0, 96)));
-        $this->setQuickcheck($this->binToText(substr($content, 96, 48)));
-
-        if (!$this->checkValidPassword()) {
-            die("Invalid Password\n");
-        }
-
         // Get offset
         $offset = substr($content, 144, 3);
         $remove = bindec($offset);
@@ -261,8 +257,36 @@ class Picture
         return $str;
     }
 
-    private function checkValidPassword() {
-        if ($this->getQuickcheck() == "00000000" || $this->getQuickcheck() == substr(Text::encrypt("Hello World", $this->getPassword())->getOutput(), 0, 8)) {
+    private function checkValidPassword($im, $height, $width) {
+        // Check for valid password by getting first 6 pixels
+        for ($j = 0; $j < $height; $j++) {
+            for ($i = 0; $i < $width; $i++) {
+                if ($a++ == 6) {
+                    break 2;
+                }
+                // Adds the index of the colors into the $chars array
+                $passcheck[] = imagecolorsforindex($im, imagecolorat($im, $i, $j));
+            }
+        }
+
+        // Push RGB pixel colors into values array
+        for ($a = 0; $a < count($passcheck); $a++) {
+            $passcheckvalues[] = $passcheck[$a]["red"];
+            $passcheckvalues[] = $passcheck[$a]["green"];
+            $passcheckvalues[] = $passcheck[$a]["blue"];
+        }
+
+        // Convert each pixel color from decimal to it's binary value
+        for ($a = 0; $a < count($passcheckvalues); $a++) {
+            $pass .= sprintf("%08d", decbin($passcheckvalues[$a]));
+        }
+
+        // Extract checksum and quick check
+        $this->setChecksum($this->binToText(substr($pass, 0, 96)));
+        $this->setQuickcheck($this->binToText(substr($pass, 96, 48)));
+
+        // Check if password is valid
+        if ($this->getQuickcheck() == "00000000" || Text::decrypt($this->getQuickcheck(), $this->getPassword())->getOutput() == "Hello ") {
             return true;
         }
         return false;
