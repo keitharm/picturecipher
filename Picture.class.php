@@ -7,9 +7,11 @@ class Picture
     private $password;
     private $text;
     private $binary;
+    private $checksum;
+    private $quickcheck;
     private $output;
 
-    public static function encrypt($input, $password = null) {
+    public static function encrypt($input, $password = null, $quickcheck = false) {
         $instance = new self();
 
         // Set input and password
@@ -20,7 +22,7 @@ class Picture
         $instance->text      = Text::encrypt($instance->getInput(), $instance->getPassword());
 
         // Convert Text object output into binary
-        $instance->binary    = $instance->toBin($instance->getText()->getOutput());
+        $instance->binary    = $instance->toBin($instance->getText()->getOutput(), $quickcheck);
 
         return $instance;
     }
@@ -131,7 +133,7 @@ class Picture
         return $this->chars()[$int];
     }
 
-    private function toBin($content) {
+    private function toBin($content, $quickcheck) {
         // Split encrypted text into array;
         $split = str_split($content);
 
@@ -148,11 +150,35 @@ class Picture
         // Calculate offset for padding in order to make last byte an octet
         $offset = sprintf("%03d", decbin(8 - (strlen($str) % 8)));
 
+        // Add checksum hash to first 16 bytes
+        $this->setChecksum(substr(md5($str), 0, 16));
+
         // Replace 1st 3 characters with offset
         $str = substr_replace($str, $offset, 0, 3);
 
         // Fill rest of last chunk with zeros as padding
         $str .= str_repeat("0", 8 - (strlen($str) % 8));
+
+        $split = str_split($this->getChecksum());
+
+        foreach ($split as $char) {
+            $hash .= sprintf("%06d", decbin($this->charToInt($char)));
+        }
+
+        // Add quickcheck after checksum
+        if ($quickcheck) {
+            $this->setQuickcheck(substr(Text::encrypt("Hello World", $this->getPassword())->getOutput(), 0, 8));
+        } else {
+            $this->setQuickcheck("00000000");
+        }
+        $split = str_split($this->getQuickcheck());
+
+        foreach ($split as $char) {
+            $check .= sprintf("%06d", decbin($this->charToInt($char)));
+        }
+
+        // Add checksum to beginning of content and quickcheck
+        $str = $hash . $check . $str;
 
         // Return binary string
         return $str;
@@ -162,27 +188,32 @@ class Picture
         // Initialize str
         $str = null;
 
-        $offset = substr($content, 0, 3);
-        $remove = bindec($offset);
-        // Remove the zero padding (if it exists)
-        if ($remove == 0) {
-            $new = substr($content, 3);
-        } else {
-            $new = substr(substr($content, 0, -$remove), 3);
+        // Extract checksum and quick check
+        $this->setChecksum($this->binToText(substr($content, 0, 96)));
+        $this->setQuickcheck($this->binToText(substr($content, 96, 48)));
+
+        if (!$this->checkValidPassword()) {
+            die("Invalid Password\n");
         }
 
-        // Remove 1st 3 characters for padding calculation
-        $chars = explode(" ", chunk_split($new, 6, " "));
+        // Get offset
+        $offset = substr($content, 144, 3);
+        $remove = bindec($offset);
 
-        // Unset last empty char chunk
-        unset($chars[count($chars)-1]);
+        // Remove the zero padding (if it exists)
+        if ($remove == 0) {
+            $new = substr($content, 147);
+        } else {
+            $new = substr(substr($content, 0, -$remove), 147);
+        }
 
-        foreach ($chars as $char) {
-            $str .= $this->intToChar(bindec($char));
+        // Check integrity
+        if ($this->isCorrupt($new)) {
+            die("Corrupt data\n");
         }
 
         // Return string
-        return $str;
+        return $this->binToText($new);
     }
 
     private function chars() {
@@ -217,12 +248,37 @@ class Picture
         return $chunks;
     }
 
+    private function binToText($bin) {
+        $chars = explode(" ", chunk_split($bin, 6, " "));
+
+        // Unset last empty char chunk
+        unset($chars[count($chars)-1]);
+
+        foreach ($chars as $char) {
+            $str .= $this->intToChar(bindec($char));
+        }
+
+        return $str;
+    }
+
+    private function checkValidPassword() {
+        if ($this->getQuickcheck() == "00000000" || $this->getQuickcheck() == substr(Text::encrypt("Hello World", $this->getPassword())->getOutput(), 0, 8)) {
+            return true;
+        }
+        return false;
+    }
+
+    private function isCorrupt($content) {
+        return ($this->getChecksum() != substr(md5("000" . $content), 0, 16));
+    }
+
     // Getters
     public function getInput() { return $this->input; }
     public function getPassword() { return $this->password; }
     public function getText() { return $this->text; }
     public function getBinary() { return $this->binary; }
-    public function getMedium() { return $this->medium; }
+    public function getChecksum() { return $this->checksum; }
+    public function getQuickcheck() { return $this->quickcheck; }
     public function getOutput() { return $this->output; }
 
     // Setters
@@ -230,7 +286,8 @@ class Picture
     private function setPassword($val) { $this->password = $val; }
     private function setText($val) { $this->text = $val; }
     private function setBinary($val) { $this->binary = $val; }
-    private function setMedium($val) { $this->medium = $val; }
+    private function setChecksum($val) { $this->checksum = $val; }
+    private function setQuickcheck($val) { $this->quickcheck = $val; }
     private function setOutput($val) { $this->output = $val; }
 }
 ?>
