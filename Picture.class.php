@@ -3,15 +3,25 @@ require_once("Text.class.php");
 
 class Picture
 {
+    const VERSION = "1.0.0";
+    const SEP = "^";
+    const END = "#";
+
     private $input;
     private $password;
     private $text;
     private $binary;
-    private $checksum;
-    private $quickcheck;
     private $output;
+    private $offset;
+    private $meta;
+    private $options = array(
+        "useVersion" => 1,
+        "useQuickcheck" => 1,
+        "useChecksum" => 1,
+        "useDate" => 1
+    );
 
-    public static function encrypt($input, $password = null, $quickcheck = false) {
+    public static function encrypt($input, $password = null) {
         $instance = new self();
 
         // Set input and password
@@ -22,7 +32,7 @@ class Picture
         $instance->text      = Text::encrypt($instance->getInput(), $instance->getPassword());
 
         // Convert Text object output into binary
-        $instance->binary    = $instance->toBin($instance->getText()->getOutput(), $quickcheck);
+        $instance->binary    = $instance->textToBin($instance->getText()->getOutput());
 
         return $instance;
     }
@@ -34,11 +44,14 @@ class Picture
         $instance->input    = $input;
         $instance->password = $password;
 
+        // Get meta info
+        $instance->extractMetaInfo();
+
         // Convert image into binary
         $instance->binary   = $instance->decodeImage();
 
         // Convert binary to Text object
-        $instance->text     = Text::decrypt($instance->fromBin($instance->getBinary()), $instance->getPassword());
+        $instance->text     = Text::decrypt($instance->binToText($instance->getBinary()), $instance->getPassword());
 
         // Decrypt text object to original input
         $instance->output   = $instance->getText()->getOutput();
@@ -46,11 +59,28 @@ class Picture
         return $instance;
     }
 
+    public static function check($input) {
+        $instance = new self();
+
+        // Set input
+        $instance->input    = $input;
+
+        // Get meta info
+        $instance->extractMetaInfo();
+
+        print_r($instance->getMeta());
+    }
+
     public function outputImage() {
+        // Add meta information to input
+        $this->genMetaInfo();
+
         $chunks = $this->getChunks();
 
         // Add extra chunks to make total chuncks divisible by 3 for complete RGB pixels
         while (count($chunks) % 3 != 0) {
+            // How many chunks extra in last pixel
+            $last++;
             $chunks[] = 0xFF;
         }
 
@@ -74,6 +104,8 @@ class Picture
         // Output image
         imagepng($img);
         imagedestroy($img);
+
+        echo "\n" . Text::encrypt($this->getMeta(), "potato")->getOutput() . "|" . Text::encrypt((int)$last, "potato")->getOutput() . "|" . Text::encrypt(count($chunks), "potato")->getOutput();
     }
 
     private function decodeImage() {
@@ -93,9 +125,6 @@ class Picture
         // Create image
         $im = @imagecreatefrompng($this->getInput());
 
-        if (!$this->checkValidPassword($im, $height, $width)) {
-            die("Invalid Password\n");
-        }
 
         // Finds the index of the color of each pixel in the image
         for ($j = 0; $j < $height; $j++) {
@@ -112,18 +141,8 @@ class Picture
             $values[] = $chars[$a]["blue"];
         }
 
-        // Hack that currently works. Needs to be replaced with something more reliable for detecting where the data ends.
-        // Possibly add position data ends at at the EOF.
-        while ($values[count($values)-1] == 0xFF || $values[count($values)-1] == 0x00) {
-            if ($prev == 0xFF && $values[count($values)-1] == 0x00) {
-                break;
-            }
-            $prev = $values[count($values)-1];
-            unset($values[count($values)-1]);
-        }
-
         // Convert each pixel color from decimal to it's binary value
-        for ($a = 0; $a < count($values); $a++) {
+        for ($a = 0; $a < $this->meta["data_end"]-$this->meta["last"]; $a++) {
             $result .= sprintf("%08d", decbin($values[$a]));
         }
         return $result;
@@ -137,79 +156,74 @@ class Picture
         return $this->chars()[$int];
     }
 
-    private function toBin($content, $quickcheck) {
-        // Split encrypted text into array;
-        $split = str_split($content);
+    private function textToBin($content) {
+        $content_len = strlen($content);
 
-        // First 3 characters of string are offset.
-        // 000 in beginning until we calculate the
-        // offset. Then it is updated.
-        $str = "000";
-
-        // Convert ascii characters into binary using charToInt mapping
-        foreach ($split as $val) {
-            $str .= sprintf("%06d", decbin($this->charToInt($val)));
+        // Convert content into binary
+        for ($a = 0; $a < $content_len; $a++) {
+            $bin .= sprintf("%06d", decbin($this->charToInt($content[$a])));
         }
 
-        // Calculate offset for padding in order to make last byte an octet
-        $offset = sprintf("%03d", decbin(8 - (strlen($str) % 8)));
-
-        // Add checksum hash to first 16 bytes
-        $this->setChecksum(substr(md5($str), 0, 16));
-
-        // Replace 1st 3 characters with offset
-        $str = substr_replace($str, $offset, 0, 3);
-
-        // Fill rest of last chunk with zeros as padding
-        $str .= str_repeat("0", 8 - (strlen($str) % 8));
-
-        $split = str_split($this->getChecksum());
-
-        foreach ($split as $char) {
-            $hash .= sprintf("%06d", decbin($this->charToInt($char)));
-        }
-
-        // Add quickcheck after checksum
-        if ($quickcheck) {
-            $this->setQuickcheck(substr(Text::encrypt("Hello World", $this->getPassword())->getOutput(), 0, 8));
-        } else {
-            $this->setQuickcheck("00000000");
-        }
-        $split = str_split($this->getQuickcheck());
-
-        foreach ($split as $char) {
-            $check .= sprintf("%06d", decbin($this->charToInt($char)));
-        }
-
-        // Add checksum to beginning of content and quickcheck
-        $str = $hash . $check . $str;
+        // Fill rest of last chunk with zeros as padding and calculate offset
+        $offset = substr(sprintf("%03d", decbin(8 - (strlen($bin) % 8))), -3);
+        $this->setOffset($offset);
+        $bin .= str_repeat("0", bindec($offset));
 
         // Return binary string
-        return $str;
+        return $bin;
     }
 
-    private function fromBin($content) {
-        // Initialize str
-        $str = null;
+    private function genMetaInfo() {
+        // Initialize meta
+        $meta = null;
 
-        // Get offset
-        $offset = substr($content, 144, 3);
-        $remove = bindec($offset);
+        if ($this->useVersion()) {
+            $meta .= Picture::VERSION;
+        }
+        $meta .= Picture::SEP;
 
-        // Remove the zero padding (if it exists)
-        if ($remove == 0) {
-            $new = substr($content, 147);
-        } else {
-            $new = substr(substr($content, 0, -$remove), 147);
+        if ($this->useChecksum()) {
+            $meta .= md5($this->getInput());
+        }
+        $meta .= Picture::SEP;
+
+        if ($this->useQuickcheck()) {
+            $meta .= Text::encrypt("Hello World", $this->getPassword())->getOutput();
+        }
+        $meta .= Picture::SEP;
+
+        if ($this->useDate()) {
+            $meta .= time();
+        }
+        $meta .= Picture::END;
+
+        // Save meta
+        $this->setMeta($meta);
+    }
+
+    private function extractMetaInfo() {
+        $meta = $this->tailCustom($this->getInput(), 1);
+        $meta_parts = explode("|", $meta);
+
+        foreach ($meta_parts as &$part) {
+            $part = Text::decrypt($part, "potato")->getOutput();
         }
 
-        // Check integrity
-        if ($this->isCorrupt($new)) {
-            die("Corrupt data\n");
-        }
+        $info = explode("^", substr($meta_parts[0], 0, -1));
+        $meta_parts[0] = $info;
 
-        // Return string
-        return $this->binToText($new);
+        // Default options
+        $this->setMeta(array(
+            "version" => $meta_parts[0][0],
+            "checksum" => $meta_parts[0][1],
+            "quickcheck" => $meta_parts[0][2],
+            "date" => array(
+                "timestamp" => $meta_parts[0][3],
+                "formatted" => @date("F j, Y, g:i:s a", $meta_parts[0][3])
+            ),
+            "last" => $meta_parts[1],
+            "data_end" => $meta_parts[2]
+        ));
     }
 
     private function chars() {
@@ -244,7 +258,7 @@ class Picture
         return $chunks;
     }
 
-    private function binToText($bin) {
+    public function binToText($bin) {
         $chars = explode(" ", chunk_split($bin, 6, " "));
 
         // Unset last empty char chunk
@@ -257,43 +271,68 @@ class Picture
         return $str;
     }
 
-    private function checkValidPassword($im, $height, $width) {
-        // Check for valid password by getting first 6 pixels
-        for ($j = 0; $j < $height; $j++) {
-            for ($i = 0; $i < $width; $i++) {
-                if ($a++ == 6) {
-                    break 2;
-                }
-                // Adds the index of the colors into the $chars array
-                $passcheck[] = imagecolorsforindex($im, imagecolorat($im, $i, $j));
-            }
+    private function tailCustom($filepath, $lines = 1, $adaptive = true) {
+        // Open file
+        $f = @fopen($filepath, "rb");
+        if ($f === false) return false;
+
+        // Sets buffer size
+        if (!$adaptive) $buffer = 4096;
+        else $buffer = ($lines < 2 ? 64 : ($lines < 10 ? 512 : 4096));
+
+        // Jump to last character
+        fseek($f, -1, SEEK_END);
+
+        // Read it and adjust line number if necessary
+        // (Otherwise the result would be wrong if file doesn't end with a blank line)
+        if (fread($f, 1) != "\n") $lines -= 1;
+
+        // Start reading
+        $output = '';
+        $chunk = '';
+
+        // While we would like more
+        while (ftell($f) > 0 && $lines >= 0) {
+            // Figure out how far back we should jump
+            $seek = min(ftell($f), $buffer);
+
+            // Do the jump (backwards, relative to where we are)
+            fseek($f, -$seek, SEEK_CUR);
+
+            // Read a chunk and prepend it to our output
+            $output = ($chunk = fread($f, $seek)) . $output;
+
+            // Jump back to where we started reading
+            fseek($f, -mb_strlen($chunk, '8bit'), SEEK_CUR);
+
+            // Decrease our line counter
+            $lines -= substr_count($chunk, "\n");
+
         }
 
-        // Push RGB pixel colors into values array
-        for ($a = 0; $a < count($passcheck); $a++) {
-            $passcheckvalues[] = $passcheck[$a]["red"];
-            $passcheckvalues[] = $passcheck[$a]["green"];
-            $passcheckvalues[] = $passcheck[$a]["blue"];
+        // While we have too many lines
+        // (Because of buffer size we might have read too many)
+        while ($lines++ < 0) {
+            // Find first newline and remove all text before that
+            $output = substr($output, strpos($output, "\n") + 1);
         }
 
-        // Convert each pixel color from decimal to it's binary value
-        for ($a = 0; $a < count($passcheckvalues); $a++) {
-            $pass .= sprintf("%08d", decbin($passcheckvalues[$a]));
-        }
-
-        // Extract checksum and quick check
-        $this->setChecksum($this->binToText(substr($pass, 0, 96)));
-        $this->setQuickcheck($this->binToText(substr($pass, 96, 48)));
-
-        // Check if password is valid
-        if ($this->getQuickcheck() == "00000000" || Text::decrypt($this->getQuickcheck(), $this->getPassword())->getOutput() == "Hello ") {
-            return true;
-        }
-        return false;
+        // Close file and return
+        fclose($f);
+        return trim($output);
     }
 
-    private function isCorrupt($content) {
-        return ($this->getChecksum() != substr(md5("000" . $content), 0, 16));
+    private function useVersion() {
+        return $this->getOption("useVersion");
+    }
+    private function useQuickcheck() {
+        return $this->getOption("useQuickcheck");
+    }
+    private function useChecksum() {
+        return $this->getOption("useChecksum");
+    }
+    private function useDate() {
+        return $this->getOption("useDate");
     }
 
     // Getters
@@ -301,17 +340,20 @@ class Picture
     public function getPassword() { return $this->password; }
     public function getText() { return $this->text; }
     public function getBinary() { return $this->binary; }
-    public function getChecksum() { return $this->checksum; }
-    public function getQuickcheck() { return $this->quickcheck; }
     public function getOutput() { return $this->output; }
+    public function getOffset() { return $this->offset; }
+    public function getMeta($field = null) { return (!$field) ? $this->meta : $this->meta[$field]; }
+    public function getOption($field) { return $this->options[$field]; }
 
     // Setters
+    public function setOption($field, $val) { $this->options[$field] = $val; }
+
     private function setInput($val) { $this->input = $val; }
     private function setPassword($val) { $this->password = $val; }
     private function setText($val) { $this->text = $val; }
     private function setBinary($val) { $this->binary = $val; }
-    private function setChecksum($val) { $this->checksum = $val; }
-    private function setQuickcheck($val) { $this->quickcheck = $val; }
     private function setOutput($val) { $this->output = $val; }
+    private function setOffset($val) { $this->offset = $val; }
+    private function setMeta($val) { $this->meta = $val; }
 }
 ?>
