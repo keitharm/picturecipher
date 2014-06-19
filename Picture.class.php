@@ -47,8 +47,14 @@ class Picture
         // Get meta info
         $instance->extractMetaInfo();
 
+        // Perform quickcheck if available
+        $instance->isValidPassword();
+
         // Convert image into binary
         $instance->binary   = $instance->decodeImage();
+
+        // Perform checksum verification
+        $instance->isValidChecksum();
 
         // Convert binary to Text object
         $instance->text     = Text::decrypt($instance->binToText($instance->getBinary()), $instance->getPassword());
@@ -183,7 +189,7 @@ class Picture
         $meta .= Picture::SEP;
 
         if ($this->useChecksum()) {
-            $meta .= md5($this->getInput());
+            $meta .= md5($this->getBinary());
         }
         $meta .= Picture::SEP;
 
@@ -269,6 +275,22 @@ class Picture
         }
 
         return $str;
+    }
+
+    private function isValidPassword() {
+        if ($this->getMeta("quickcheck") != null) {
+            if ($this->getMeta("quickcheck") != Text::encrypt("Hello World", $this->getPassword())->getOutput()) {
+                die("Error: Invalid Password\n");
+            }
+        }
+    }
+
+    private function isValidChecksum() {
+        if ($this->getMeta("checksum") != null) {
+            if ($this->getMeta("checksum") != md5($this->getBinary())) {
+                die("Error: Corrupt data\n");
+            }
+        }
     }
 
     private function tailCustom($filepath, $lines = 1, $adaptive = true) {
