@@ -1,4 +1,5 @@
 <?php
+ini_set('memory_limit','-1');
 require_once("Text.class.php");
 
 class Picture
@@ -20,6 +21,7 @@ class Picture
         "useChecksum" => 1,
         "useDate" => 1
     );
+    private $status;
 
     public static function encrypt($input, $password = null) {
         $instance = new self();
@@ -49,12 +51,18 @@ class Picture
 
         // Perform quickcheck if available
         $instance->isValidPassword();
+        if ($instance->getStatus() != null) {
+            return $instance;
+        }
 
         // Convert image into binary
         $instance->binary   = $instance->decodeImage();
 
         // Perform checksum verification
         $instance->isValidChecksum();
+        if ($instance->getStatus() != null) {
+            return $instance;
+        }
 
         // Convert binary to Text object
         $instance->text     = Text::decrypt($instance->binToText($instance->getBinary()), $instance->getPassword());
@@ -181,7 +189,7 @@ class Picture
 
     private function genMetaInfo() {
         // Initialize meta
-        $meta = "PICTURECIPHER";
+        $meta = "PICTURECIPHER" . Picture::SEP;
 
         if ($this->useVersion()) {
             $meta .= Picture::VERSION;
@@ -215,20 +223,21 @@ class Picture
             $part = Text::decrypt($part, "potato")->getOutput();
         }
 
-        $info = explode("^", substr($meta_parts[0], 0, -1));
+        $info = explode(Picture::SEP, substr($meta_parts[0], 0, -1));
         $meta_parts[0] = $info;
 
-        if (substr($meta_parts[0][0], 0, 13) != "PICTURECIPHER") {
+        if ($meta_parts[0][0] != "PICTURECIPHER") {
             die("Error: Invalid Picturecipher file\n");
         }
         // Default options
         $this->setMeta(array(
-            "version" => substr($meta_parts[0][0], 13),
-            "checksum" => $meta_parts[0][1],
-            "quickcheck" => $meta_parts[0][2],
+            "valid" => $meta_parts[0][0],
+            "version" => $meta_parts[0][1],
+            "checksum" => $meta_parts[0][2],
+            "quickcheck" => $meta_parts[0][3],
             "date" => array(
-                "timestamp" => $meta_parts[0][3],
-                "formatted" => @date("F j, Y, g:i:s a", $meta_parts[0][3])
+                "timestamp" => $meta_parts[0][4],
+                "formatted" => @date("F j, Y, g:i:s a", $meta_parts[0][4])
             ),
             "last" => $meta_parts[1],
             "data_end" => $meta_parts[2]
@@ -369,6 +378,7 @@ class Picture
     public function getOffset() { return $this->offset; }
     public function getMeta($field = null) { return (!$field) ? $this->meta : $this->meta[$field]; }
     public function getOption($field) { return $this->options[$field]; }
+    public function getStatus() { return $this->status; }
 
     // Setters
     public function setOption($field, $val) { $this->options[$field] = $val; }
@@ -380,5 +390,6 @@ class Picture
     private function setOutput($val) { $this->output = $val; }
     private function setOffset($val) { $this->offset = $val; }
     private function setMeta($val) { $this->meta = $val; }
+    private function setStatus($val) { $this->status = $val; }
 }
 ?>
