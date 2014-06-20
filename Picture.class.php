@@ -181,7 +181,7 @@ class Picture
 
     private function genMetaInfo() {
         // Initialize meta
-        $meta = null;
+        $meta = "PICTURECIPHER";
 
         if ($this->useVersion()) {
             $meta .= Picture::VERSION;
@@ -218,9 +218,12 @@ class Picture
         $info = explode("^", substr($meta_parts[0], 0, -1));
         $meta_parts[0] = $info;
 
+        if (substr($meta_parts[0][0], 0, 13) != "PICTURECIPHER") {
+            die("Error: Invalid Picturecipher file\n");
+        }
         // Default options
         $this->setMeta(array(
-            "version" => $meta_parts[0][0],
+            "version" => substr($meta_parts[0][0], 13),
             "checksum" => $meta_parts[0][1],
             "quickcheck" => $meta_parts[0][2],
             "date" => array(
