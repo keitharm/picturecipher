@@ -74,7 +74,7 @@ class Picture
         // Get meta info
         $instance->extractMetaInfo();
 
-        print_r($instance->getMeta());
+        return $instance;
     }
 
     public function outputImage() {

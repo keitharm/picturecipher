@@ -1,5 +1,7 @@
 <?php
+ini_set('memory_limit','-1');
 require_once("Picture.class.php");
 
-Picture::encrypt($argv[1], $argv[2])->outputImage();
+$pic = Picture::encrypt(file_get_contents($argv[1]), $argv[2]);
+$pic->outputImage();
 ?>
