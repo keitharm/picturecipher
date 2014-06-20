@@ -227,7 +227,7 @@ class Picture
         $meta_parts[0] = $info;
 
         if ($meta_parts[0][0] != "PICTURECIPHER") {
-            die("Error: Invalid Picturecipher file\n");
+            $this->setStatus("Error: Invalid Picturecipher file");
         }
         // Default options
         $this->setMeta(array(
@@ -292,7 +292,7 @@ class Picture
     private function isValidPassword() {
         if ($this->getMeta("quickcheck") != null) {
             if ($this->getMeta("quickcheck") != Text::encrypt("Hello World", $this->getPassword())->getOutput()) {
-                die("Error: Invalid Password\n");
+                $this->setStatus("Error: Invalid Password");
             }
         }
     }
@@ -300,7 +300,7 @@ class Picture
     private function isValidChecksum() {
         if ($this->getMeta("checksum") != null) {
             if ($this->getMeta("checksum") != md5($this->getBinary())) {
-                die("Error: Corrupt data\n");
+                $this->setStatus("Error: Corrupt data");
             }
         }
     }
