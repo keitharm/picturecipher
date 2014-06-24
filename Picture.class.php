@@ -1,5 +1,4 @@
 <?php
-ini_set('memory_limit','-1');
 require_once("Text.class.php");
 
 class Picture
