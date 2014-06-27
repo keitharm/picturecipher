@@ -33,30 +33,30 @@ Make an image that is encrypted using text file "hello.txt" using password "avoc
 ```
 php encrypt.php hello.txt avocado > hello.png
 ```
-To decode the message from the image we just made
+To decode the message from the image we just made.
 ```
 php decrypt.php hello.png avocado
 ```
-If you want to view the meta data of the image we just made
+If you want to view the meta data of the image we just made.
 ```
 php check.php hello.png
 ```
 
 Extra encryption options
 ------------------------
-There are 4 (or 5 if you count password) options that you can include with encrypting a file into an image
+There are 4 (or 5 if you count password) options that you can include with encrypting a file into an image.
 All of the options are enabled by default.
 
 1. Version
-    - Include the version information of the picturecipher
+    - Include the version information of the picturecipher.
 2. Quickcheck
     - Include a hash of the phrase "Hello World" encrypted using the same password that the image was encrypted with.
         - The picturecipher will attempt to encrypt the text "Hello World" using the password you supply and see if it matches the encrypted image's hash.
-    - This can be a security hazard since it will be much faster to bruteforce an encrypted image vs having to wait for the image to decrypt and seeing if the output is garbled
+    - This can be a security hazard since it will be much faster to bruteforce an encrypted image vs having to wait for the image to decrypt and seeing if the output is garbled.
 3. Checksum
     - Include a checksum of the data to verify if the file has been tampered with.
 4. Date
-    - Include the date that the file was encrypted
+    - Include the date that the file was encrypted.
 
 By default, all of the options are enabled.
 In order to disable the options, you must include the following lines with the options you want to disable before calling outputImage().
@@ -93,4 +93,4 @@ How it works
     - 3 8-bit chunks per pixel.
     - The reason why alpha channel is not used is because PHP GD library only allows a 7-bit alpha channel for some stupid reason. :(
 6. The rest of the pixels that are unused are filled with (0, 0, 0) pixels representing null data.
-7. The picture meta data is added at the end of the PNG file's iEND chunk
+7. The picture meta data is added at the end of the PNG file's iEND chunk.
