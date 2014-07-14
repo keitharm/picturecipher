@@ -3,7 +3,7 @@ require_once("Text.class.php");
 
 class Picture
 {
-    const VERSION = "1.0.0";
+    const VERSION = "1.0.1";
     const SEP = "^";
     const END = "#";
 
@@ -118,7 +118,7 @@ class Picture
         imagepng($img);
         imagedestroy($img);
 
-        echo "\n" . Text::encrypt($this->getMeta(), "potato")->getOutput() . "|" . Text::encrypt((int)$last, "potato")->getOutput() . "|" . Text::encrypt(count($chunks), "potato")->getOutput();
+        echo "\n" . Text::encrypt($this->getMeta(), "potato")->getOutput() . "|" . Text::encrypt((int)$last, "potato")->getOutput() . "|" . Text::encrypt(count($chunks), "potato")->getOutput() . "|" . Text::encrypt($this->getOffset(), "potato")->getOutput();
     }
 
     private function decodeImage() {
@@ -158,6 +158,9 @@ class Picture
         for ($a = 0; $a < $this->meta["data_end"]-$this->meta["last"]; $a++) {
             $result .= sprintf("%08d", decbin($values[$a]));
         }
+        if ($this->meta["offset"] != 0) {
+            return substr($result, 0, -$this->meta["offset"]);
+        }
         return $result;
     }
 
@@ -178,9 +181,9 @@ class Picture
         }
 
         // Fill rest of last chunk with zeros as padding and calculate offset
-        $offset = substr(sprintf("%03d", decbin(8 - (strlen($bin) % 8))), -3);
+        $offset = 8 - (strlen($bin) % 8);
         $this->setOffset($offset);
-        $bin .= str_repeat("0", bindec($offset));
+        $bin .= str_repeat("0", $offset);
 
         // Return binary string
         return $bin;
@@ -196,7 +199,11 @@ class Picture
         $meta .= Picture::SEP;
 
         if ($this->useChecksum()) {
-            $meta .= md5($this->getBinary());
+            if ($this->getOffset() != 0) {
+                $meta .= md5(substr($this->getBinary(), 0, -$this->getOffset()));
+            } else {
+                $meta .= md5($this->getBinary());
+            }
         }
         $meta .= Picture::SEP;
 
@@ -239,7 +246,8 @@ class Picture
                 "formatted" => @date("F j, Y, g:i:s a", $meta_parts[0][4])
             ),
             "last" => $meta_parts[1],
-            "data_end" => $meta_parts[2]
+            "data_end" => $meta_parts[2],
+            "offset" => $meta_parts[3]
         ));
     }
 
