@@ -3,7 +3,7 @@ require_once("Text.class.php");
 
 class Picture
 {
-    const VERSION = "1.0.1";
+    const VERSION = "1.1.0";
     const SEP = "^";
     const END = "#";
 

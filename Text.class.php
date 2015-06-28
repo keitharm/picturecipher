@@ -36,10 +36,10 @@ class Text
 
     private function scramble() {
         // Seed random number generator
-        srand(hexdec(substr(md5($this->password), 0, 10)));
+        mt_srand(hexdec(substr(md5($this->password), 0, 10)));
 
         // Shuffle base 64 character string
-        $this->setCipher(str_shuffle($this->getOriginal()));
+        $this->setCipher($this->myShuffle($this->getOriginal()));
     }
 
     private function encode($content) {
@@ -65,6 +65,19 @@ class Text
 
         // Return result
         return $result;
+    }
+
+    private function myShuffle($str) {
+        $split = str_split($str);
+        $new = "";
+
+        while (strlen($new) != strlen($str)) {
+            $pos = mt_rand(0, count($split)-1);
+            $new .= $split[$pos];
+            unset($split[$pos]);
+            $split = array_values($split);
+        }
+        return $new;
     }
 
     public function getOriginal() { return Text::ORIGINAL; }
