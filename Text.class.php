@@ -36,7 +36,7 @@ class Text
 
     private function scramble() {
         // Seed random number generator
-        mt_srand(hexdec(substr(md5($this->password), 0, 10)));
+        mt_srand(hexdec(substr(md5($this->password), 0, 7)));
 
         // Shuffle base 64 character string
         $this->setCipher($this->myShuffle($this->getOriginal()));
