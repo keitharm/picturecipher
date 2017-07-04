@@ -85,6 +85,7 @@ class Picture
     }
 
     public function outputImage() {
+        $last = 0;
         // Add meta information to input
         $this->genMetaInfo();
 
@@ -284,6 +285,7 @@ class Picture
     }
 
     public function binToText($bin) {
+        $str = "";
         $chars = explode(" ", chunk_split($bin, 6, " "));
 
         // Unset last empty char chunk
